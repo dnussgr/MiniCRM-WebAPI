@@ -6,13 +6,13 @@ namespace MiniCRM.Data
     /// <summary>
     /// Entity Framework database context for the CRM system
     /// </summary>
-    public class AppDBContext : DbContext
+    public class AppDbContext : DbContext
     {
         /// <summary>
         /// Constructor that accepts DBContext options
         /// </summary>
         /// <param name="options"></param>
-        public AppDBContext(DbContextOptions<AppDBContext> options) : base(options) { }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
 
         /// <summary>

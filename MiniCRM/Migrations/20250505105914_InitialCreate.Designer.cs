@@ -10,7 +10,7 @@ using MiniCRM.Data;
 
 namespace MiniCRM.Migrations
 {
-    [DbContext(typeof(AppDBContext))]
+    [DbContext(typeof(AppDbContext))]
     [Migration("20250505105914_InitialCreate")]
     partial class InitialCreate
     {
