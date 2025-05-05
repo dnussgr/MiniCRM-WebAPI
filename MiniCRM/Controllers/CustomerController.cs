@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniCRM.Data;
+using MiniCRM.Dtos;
 using MiniCRM.Models;
 
 namespace MiniCRM.Controllers
@@ -10,10 +12,12 @@ namespace MiniCRM.Controllers
     public class CustomerController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-        public CustomerController(AppDbContext context)
+        public CustomerController(AppDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
 
@@ -34,7 +38,9 @@ namespace MiniCRM.Controllers
         }
 
 
-
+        /// <summary>
+        /// Get a specific customer by ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<Customer>> GetCustomer(int id)
         {
@@ -46,36 +52,60 @@ namespace MiniCRM.Controllers
         }
 
 
+        /// <summary>
+        /// Creates a customer
+        /// </summary>
         [HttpPost]
-        public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
+        public async Task<ActionResult<CustomerDto>> CreateCustomer(CreateCustomerDto createCustomerDto)
         {
+            var customer = _mapper.Map<Customer>(createCustomerDto);
+            customer.CreatedAt = DateTime.UtcNow;
+
             _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+            var customerDto = _mapper.Map<CustomerDto>(customer);
+            return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customerDto);
         }
 
 
+        /// <summary>
+        /// Updates an existing customer
+        /// </summary>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCustomer(int id, Customer updatedCustomer)
+        public async Task<IActionResult> UpdateCustomer(int id, UpdateCustomerDto updateCustomerDto)
         {
-            if (id != updatedCustomer.Id)
-                return BadRequest();
+            var customer = await _context.Customers.FindAsync(id);
+            if (customer == null)
+                return NotFound();
 
-            _context.Entry(updatedCustomer).State = EntityState.Modified;
+            if (customer.IsDeleted)
+                return BadRequest("Customer is deleted and cannot be updated.");
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CustomerExists(id))
-                    return NotFound();
+            _mapper.Map(updateCustomerDto, customer);
 
-                throw;
-            }
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
 
+
+        /// <summary>
+        /// Soft delete a customer
+        /// </summary>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCustomer(int id)
+        {
+            var customer = await _context.Customers.FindAsync(id);
+            if (customer == null)
+                return NotFound();
+
+            if (customer.IsDeleted)
+                return BadRequest("Customer is already marked as deleted.");
+
+            customer.IsDeleted = true;
+            customer.DeletedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
@@ -104,8 +134,5 @@ namespace MiniCRM.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
-
-
-        private bool CustomerExists(int id) => _context.Customers.Any(e => e.Id == id);
     }
 }

@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniCRM.Data;
+using MiniCRM.Dtos;
 using MiniCRM.Models;
 
 namespace MiniCRM.Controllers
@@ -10,10 +12,12 @@ namespace MiniCRM.Controllers
     public class OrderController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-        public OrderController(AppDbContext context)
+        public OrderController(AppDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
 
@@ -29,6 +33,7 @@ namespace MiniCRM.Controllers
 
             var orders = await query.ToListAsync();
 
+            var orderDtos = _mapper.Map<List<OrderDto>>(orders);
             return Ok(orders);
         }
 
@@ -56,17 +61,23 @@ namespace MiniCRM.Controllers
         /// </summary>
         /// <param name="order">The order to create</param>
         [HttpPost]
-        public async Task<ActionResult<Order>> CreateOrder(Order order)
+        public async Task<ActionResult<OrderDto>> CreateOrder(CreateOrderDto createOrderDto)
         {
             // Check if customer exists
-            var customerExists = await _context.Customers.AnyAsync(c => c.Id == order.CustomerId && !c.IsDeleted);
+            var customerExists = await _context.Customers
+                .AnyAsync(c => c.Id == createOrderDto.CustomerId && !c.IsDeleted);
+
             if (!customerExists)
-                return BadRequest($"Customer with ID {order.CustomerId} does not exist.");
+                return BadRequest($"Customer with ID {createOrderDto.CustomerId} does not exist or is deleted.");
+
+            var order = _mapper.Map<Order>(createOrderDto);
+            order.OrderDate = DateTime.UtcNow;
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+            var orderDto = _mapper.Map<OrderDto>(order);
+            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, orderDto);
         }
 
 
@@ -76,19 +87,19 @@ namespace MiniCRM.Controllers
         /// <param name="id">Id of order to update</param>
         /// <param name="updatedOrder">The updated order data</param>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateOrder(int id, Order updatedOrder)
+        public async Task<IActionResult> UpdateOrder(int id, UpdateOrderDto updateOrderDto)
         {
-            if (id != updatedOrder.Id)
-                return BadRequest("ID mismatch.");
-
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
                 return NotFound();
 
-            // Update order
-            order.ProductName = updatedOrder.ProductName;
-            order.Quantity = updatedOrder.Quantity;
-            order.TotalPrice = updatedOrder.TotalPrice;
+            var customerExists = await _context.Customers
+                .AnyAsync(c => c.Id == updateOrderDto.CustomerId && !c.IsDeleted);
+
+            if (!customerExists)
+                return BadRequest($"Customer with ID {updateOrderDto.CustomerId} does not exist or is deleted.");
+
+            _mapper.Map(updateOrderDto, order);
 
             await _context.SaveChangesAsync();
             return NoContent();
