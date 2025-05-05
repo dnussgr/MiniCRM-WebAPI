@@ -20,12 +20,14 @@ namespace MiniCRM.Models
         public decimal TotalPrice { get; set; }
 
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+        public bool IsCanceled { get; set; } = false;
+        public DateTime? CanceledAt { get; set; }
 
 
         /// <summary>
         /// Foreign key - ID of Customer who placed the order
         /// </summary>
-        public int CuctomerId { get; set; }
+        public int CustomerId { get; set; }
 
 
         /// <summary>

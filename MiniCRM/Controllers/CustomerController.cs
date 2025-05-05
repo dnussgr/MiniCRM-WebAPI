@@ -17,11 +17,22 @@ namespace MiniCRM.Controllers
         }
 
 
+        /// <summary>
+        /// Gets all customers, optionally including deleted/anonymized ones.
+        /// </summary>
+        /// <param name="includeDeleted">If true, also includes deleted/anonymized customers.</param>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Customer>>> GetAllCustomers()
+        public async Task<ActionResult<IEnumerable<Customer>>> GetAllCustomers([FromQuery] bool includeDeleted = false)
         {
-            return await _context.Customers.ToListAsync();
+            var query = _context.Customers.AsQueryable();
+
+            if (!includeDeleted)
+                query = query.Where(c => !c.IsDeleted);
+
+            var customers = await query.ToListAsync();
+            return Ok(customers);
         }
+
 
 
         [HttpGet("{id}")]
@@ -69,18 +80,31 @@ namespace MiniCRM.Controllers
         }
 
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCustomer (int id)
+        /// <summary>
+        /// Anonymizes a customer's personal data to comply with data protection regulations.
+        /// </summary>
+        /// <param name="id">The ID of the customer to anonymize.</param>
+        [HttpDelete("anonymize/{id}")]
+        public async Task<IActionResult> AnonymizeCustomer(int id)
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null)
                 return NotFound();
 
-            _context.Customers.Remove(customer);
-            await _context.SaveChangesAsync();
+            if (customer.IsDeleted)
+                return BadRequest("Customer is already deleted.");
 
+            customer.FirstName = "Anonymized";
+            customer.LastName = $"User_{customer.Id}";
+            customer.Email = $"deleted_{customer.Id}@example.com";
+            customer.PhoneNumber = null;
+            customer.IsDeleted = true;
+            customer.DeletedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
             return NoContent();
         }
+
 
         private bool CustomerExists(int id) => _context.Customers.Any(e => e.Id == id);
     }
