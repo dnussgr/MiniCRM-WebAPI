@@ -2,8 +2,14 @@
 
 namespace MiniCRM.Models
 {
+    /// <summary>
+    /// Represents a customer in the CRM system
+    /// </summary>
     public class Customer
     {
+        /// <summary>
+        /// ID acts as primary key
+        /// </summary>
         public int Id { get; set; }
 
         [Required]
@@ -21,9 +27,14 @@ namespace MiniCRM.Models
         [Phone]
         public string? PhoneNumber { get; set; }
 
+        /// <summary>
+        /// UTC timestamp of customer creation
+        /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation Property
+        /// <summary>
+        /// Navigation property - all orders related to this customer
+        /// </summary>
         public ICollection<Order>? Orders { get; set; }
     }
 }

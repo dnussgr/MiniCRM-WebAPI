@@ -2,6 +2,9 @@
 
 namespace MiniCRM.Models
 {
+    /// <summary>
+    /// Represents a customer order in the CRM system
+    /// </summary>
     public class Order
     {
         public int Id { get; set; }
@@ -18,10 +21,16 @@ namespace MiniCRM.Models
 
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 
-        // Foreign Key
+
+        /// <summary>
+        /// Foreign key - ID of Customer who placed the order
+        /// </summary>
         public int CuctomerId { get; set; }
 
-        // Navigation Property
+
+        /// <summary>
+        /// Navigation property - the customer who placed the order
+        /// </summary>
         public Customer? Customer { get; set; }
     }
 }
