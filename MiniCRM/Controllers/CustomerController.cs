@@ -13,11 +13,14 @@ namespace MiniCRM.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ILogger<CustomerController> _logger;
 
-        public CustomerController(AppDbContext context, IMapper mapper)
+        public CustomerController(AppDbContext context, IMapper mapper, ILogger<CustomerController> logger)
         {
             _context = context;
             _mapper = mapper;
+            _logger = logger;
+
         }
 
 
@@ -34,6 +37,9 @@ namespace MiniCRM.Controllers
                 query = query.Where(c => !c.IsDeleted);
 
             var customers = await query.ToListAsync();
+
+            _logger.LogInformation("Retrieved {count} customers (includeDeleted={includeDeleted})", customers.Count, includeDeleted);
+
             return Ok(customers);
         }
 
@@ -46,9 +52,13 @@ namespace MiniCRM.Controllers
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null)
+            {
+                _logger.LogWarning("Customer with ID {CustomerId} not found", id);
                 return NotFound();
+            }
 
-            return customer;
+            _logger.LogInformation("Customer {CustomerId} retrieved", id);
+            return Ok(_mapper.Map<CustomerDto>(customer));
         }
 
 
@@ -64,6 +74,8 @@ namespace MiniCRM.Controllers
             _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Created new customer with ID {CustomerId}: {firstName} {lastName}", customer.Id, customer.FirstName, customer.LastName);
+
             var customerDto = _mapper.Map<CustomerDto>(customer);
             return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customerDto);
         }
@@ -77,14 +89,23 @@ namespace MiniCRM.Controllers
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null)
+            {
+                _logger.LogWarning("Attempt to update non-existent customer {CustomerId}", id);
                 return NotFound();
+            }
 
             if (customer.IsDeleted)
+            {
+                _logger.LogWarning("Attempt to update deleted customer {CustomerId}", id);
                 return BadRequest("Customer is deleted and cannot be updated.");
-
+            }
+                        
             _mapper.Map(updateCustomerDto, customer);
 
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Customer {CustomerId} successfully updated.", id);
+
             return NoContent();
         }
 
@@ -97,15 +118,23 @@ namespace MiniCRM.Controllers
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null)
+            {
+                _logger.LogWarning("Attempt to delete non-existent customer {CustomerId}", id);
                 return NotFound();
+            }
 
             if (customer.IsDeleted)
+            {
+                _logger.LogWarning("Attempt to delete already deleted customer {CustomerId}", id);
                 return BadRequest("Customer is already marked as deleted.");
+            }
 
             customer.IsDeleted = true;
             customer.DeletedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Customer {CustomerId} marked as deleted.", id);
+
             return NoContent();
         }
 
@@ -119,19 +148,26 @@ namespace MiniCRM.Controllers
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null)
+            {
+                _logger.LogWarning("Attempt to anonymize non-existent customer {CustomerId}", id);
                 return NotFound();
+            }
 
             if (customer.IsDeleted)
+            {
+                _logger.LogWarning("Attempt to anonymize already deleted customer {CustomerId}", id);
                 return BadRequest("Customer is already deleted.");
+            }
 
             customer.FirstName = "Anonymized";
             customer.LastName = $"User_{customer.Id}";
-            customer.Email = $"deleted_{customer.Id}@example.com";
+            customer.Email = $"deleted_{customer.Id}@deleted.com";
             customer.PhoneNumber = null;
             customer.IsDeleted = true;
             customer.DeletedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Customer {CustomerId} successfully anonymized", id);
             return NoContent();
         }
     }

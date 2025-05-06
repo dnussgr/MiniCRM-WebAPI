@@ -13,11 +13,13 @@ namespace MiniCRM.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ILogger<OrderController> _logger;
 
-        public OrderController(AppDbContext context, IMapper mapper)
+        public OrderController(AppDbContext context, IMapper mapper, ILogger<OrderController> logger)
         {
             _context = context;
             _mapper = mapper;
+            _logger = logger;
         }
 
 
@@ -34,6 +36,9 @@ namespace MiniCRM.Controllers
             var orders = await query.ToListAsync();
 
             var orderDtos = _mapper.Map<List<OrderDto>>(orders);
+
+            _logger.LogInformation("Retrieved {count} orders (includeCanceled={includeCanceled})", orders.Count, includeCanceled);
+
             return Ok(orders);
         }
 
@@ -50,8 +55,12 @@ namespace MiniCRM.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
+            {
+                _logger.LogWarning("Order with ID {OrderId} not found", id);
                 return NotFound();
+            }
 
+            _logger.LogInformation("Order {OrderId} retrieved", id);
             return Ok(order);
         }
 
@@ -68,13 +77,19 @@ namespace MiniCRM.Controllers
                 .AnyAsync(c => c.Id == createOrderDto.CustomerId && !c.IsDeleted);
 
             if (!customerExists)
+            {
+                _logger.LogWarning("Attempt to create order for non-existent or deleted customer {CustomerId}", createOrderDto.CustomerId);
                 return BadRequest($"Customer with ID {createOrderDto.CustomerId} does not exist or is deleted.");
+            }
+                
 
             var order = _mapper.Map<Order>(createOrderDto);
             order.OrderDate = DateTime.UtcNow;
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created new order with ID {OrderId} by customer {CustomerId}", order.Id, order.CustomerId);
 
             var orderDto = _mapper.Map<OrderDto>(order);
             return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, orderDto);
@@ -91,17 +106,28 @@ namespace MiniCRM.Controllers
         {
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
+            {
+                _logger.LogWarning("Attempt to update non-existent order {OrderId}", id);
                 return NotFound();
+
+            }
 
             var customerExists = await _context.Customers
                 .AnyAsync(c => c.Id == updateOrderDto.CustomerId && !c.IsDeleted);
 
             if (!customerExists)
+            {
+                _logger.LogWarning("Attempt to update order of customer with ID {CustomerId} that does not exist", updateOrderDto.CustomerId);
                 return BadRequest($"Customer with ID {updateOrderDto.CustomerId} does not exist or is deleted.");
+            }
+                
 
             _mapper.Map(updateOrderDto, order);
 
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Order {OrderId} successfully updated", id);
+
             return NoContent();
         }
 
@@ -110,15 +136,24 @@ namespace MiniCRM.Controllers
         {
             var order = await _context.Orders.FindAsync(id);
             if (order == null)
+            {
+                _logger.LogWarning("Attempt to cancel non-existent order {OrderId}", id);
                 return NotFound();
+            }
 
             if (order.IsCanceled)
+            {
+                _logger.LogWarning("Attempt to cancel order {OrderId} that has already been canceled", id);
                 return BadRequest("Order is already canceled.");
+            }
+                
 
             order.IsCanceled = true;
             order.CanceledAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully canceled order {OrderId}", id);
 
             return NoContent();
         }
