@@ -92,5 +92,38 @@ namespace MiniCRM.Tests.Controllers
             Assert.Equal("updated@example.com", updated.Email);
             Assert.Equal("+0987654321", updated!.PhoneNumber);
         }
+
+        [Fact]
+        public async Task UpdateCustomer_IsDeleted_ReturnsBadRequest()
+        {
+            // Arrange
+            var deletedCustomer = new Customer
+            {
+                FirstName = "Deleted",
+                LastName = "Guy",
+                Email = "gone@example.com",
+                PhoneNumber = "+000000",
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = true,
+                DeletedAt = DateTime.UtcNow
+            };
+            _context.Customers.Add(deletedCustomer);
+            await _context.SaveChangesAsync();
+
+            var updateDto = new UpdateCustomerDto
+            {
+                FirstName = "ShouldNot",
+                LastName = "Work",
+                Email = "failed@example.com",
+                PhoneNumber = "+999999999"
+            };
+
+            // Act
+            var result = await _controller.UpdateCustomer(deletedCustomer.Id, updateDto);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal("Customer is deleted and cannot be updated.", badRequest.Value);
+        }
     }
 }
