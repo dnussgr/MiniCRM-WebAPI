@@ -125,5 +125,32 @@ namespace MiniCRM.Tests.Controllers
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Equal("Customer is deleted and cannot be updated.", badRequest.Value);
         }
+
+        [Fact]
+        public async Task DeleteCustomer_DeletesCorrectly()
+        {
+            // Arrange
+            var customer = new Customer
+            {
+                FirstName = "To",
+                LastName = "Delete",
+                Email = "delete@example.com",
+                PhoneNumber = "+987654",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _controller.DeleteCustomer(customer.Id);
+
+            // Assert
+            Assert.IsType<NoContentResult>(result);
+
+            var deletedCustomer = await _context.Customers.FindAsync(customer.Id);
+            Assert.True(deletedCustomer!.IsDeleted);
+            Assert.NotNull(deletedCustomer.DeletedAt);
+            Assert.True(deletedCustomer.DeletedAt <= DateTime.UtcNow);
+        }
     }
 }
