@@ -96,7 +96,7 @@ Die Unit Tests befinden sich im Projektordner `MiniCRM.Tests`.
 ```
 dotnet test
 ```
-## Weiterentwicklung (geplant oder optional)
+## Weiterentwicklung (geplant)
 - Integrationstests mit HTTP-Testserver
 - Pagination bei Abfragen
 - Rollenbasierte Authentifizierung
