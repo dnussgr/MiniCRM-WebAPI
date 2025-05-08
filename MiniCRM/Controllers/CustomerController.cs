@@ -29,18 +29,14 @@ namespace MiniCRM.Controllers
         /// </summary>
         /// <param name="includeDeleted">If true, also includes deleted/anonymized customers.</param>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Customer>>> GetAllCustomers([FromQuery] bool includeDeleted = false)
+        public async Task<ActionResult<IEnumerable<CustomerDto>>> GetAllCustomers([FromQuery] bool includeDeleted = false)
         {
             var query = _context.Customers.AsQueryable();
-
             if (!includeDeleted)
                 query = query.Where(c => !c.IsDeleted);
 
             var customers = await query.ToListAsync();
-
-            _logger.LogInformation("Retrieved {count} customers (includeDeleted={includeDeleted})", customers.Count, includeDeleted);
-
-            return Ok(customers);
+            return Ok(_mapper.Map<IEnumerable<CustomerDto>>(customers));
         }
 
 
