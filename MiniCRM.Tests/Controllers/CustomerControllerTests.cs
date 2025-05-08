@@ -58,5 +58,39 @@ namespace MiniCRM.Tests.Controllers
             Assert.Equal("Test", returnValue.FirstName);
             Assert.Equal("User", returnValue.LastName);
         }
+
+        [Fact]
+        public async Task UpdateCustomer_UpdatesCustomerSuccessfully()
+        {
+            // Arrange
+            var original = new Customer
+            {
+                FirstName = "Original",
+                LastName = "User",
+                Email = "original@example.com",
+                PhoneNumber = "+1234567890",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Customers.Add(original);
+            await _context.SaveChangesAsync();
+
+            var updateDto = new UpdateCustomerDto
+            {
+                FirstName = "Updated",
+                LastName = "User",
+                Email = "updated@example.com",
+                PhoneNumber = "+0987654321"
+            };
+
+            // Act
+            var result = await _controller.UpdateCustomer(original.Id, updateDto);
+
+            // Assert
+            var updated = await _context.Customers.FindAsync(original.Id);
+            Assert.Equal("Updated", updated!.FirstName);
+            Assert.Equal($"{updated.LastName}", updated!.LastName);
+            Assert.Equal("updated@example.com", updated.Email);
+            Assert.Equal("+0987654321", updated!.PhoneNumber);
+        }
     }
 }
