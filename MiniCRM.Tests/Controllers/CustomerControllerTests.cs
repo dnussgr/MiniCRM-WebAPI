@@ -1,13 +1,12 @@
-﻿using Xunit;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using MiniCRM.Controllers;
 using MiniCRM.Data;
 using MiniCRM.Dtos;
 using MiniCRM.Models;
 using MiniCRM.Profiles;
-using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MiniCRM.Tests.Controllers
 {
