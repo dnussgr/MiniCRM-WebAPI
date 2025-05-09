@@ -71,5 +71,38 @@ namespace MiniCRM.Tests.Controllers
             Assert.Equal(1, returnValue.Quantity);
             Assert.Equal(0.99M, returnValue.TotalPrice);
         }
+
+        [Fact]
+        public async Task CreateOrder_ReturnsBadRequestIfCustomerIsDeleted()
+        {
+            //Arrange
+            var deletedCustomer = new Customer
+            {
+                FirstName = "Ghost",
+                LastName = "Customer",
+                Email = "ghost@example.com",
+                PhoneNumber = "+00000",
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = true,
+                DeletedAt = DateTime.UtcNow
+            };
+            _context.Customers.Add(deletedCustomer);
+            await _context.SaveChangesAsync();
+
+            var order = new CreateOrderDto
+            {
+                CustomerId = deletedCustomer.Id,
+                ProductName = "Ghost Order",
+                Quantity = 1,
+                TotalPrice = 10.0M
+            };
+
+            // Act
+            var result = await _controller.CreateOrder(order);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal($"Customer with ID {order.CustomerId} does not exist or is deleted.", badRequest.Value);            
+        }
     }
 }
